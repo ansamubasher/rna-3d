@@ -1,0 +1,20 @@
+# External tools cloned/built per environment.md (gRNAde, lociPARSE, US-align)
+tools/
+
+# Raw downloads and processed intermediates (CASP15 archives, clean PDBs, score caches)
+data/
+
+# Logs and per-run working folders
+results/logs/
+*_work/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

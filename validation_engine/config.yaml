@@ -1,0 +1,162 @@
+# =====================================================================
+# config.yaml — gRNAde Validation Engine
+# ---------------------------------------------------------------------
+# Every path, threshold and seed the engine uses lives here, so runs are
+# reproducible and no script hard-codes anything.
+#
+# Platform: Windows (native).
+#   * Use forward slashes in paths (C:/Users/...). Python on Windows accepts
+#     them, and YAML does not treat them as escape characters.
+#   * Relative paths are resolved against the folder that holds THIS file
+#     (validation_engine/), not against the current working directory.
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# External tools (see environment.md for how they are installed)
+# ---------------------------------------------------------------------
+tools:
+  # gRNAde repository (we import its model and featurisation code from here)
+  grnade_repo: tools/geometric-rna-design
+  # Pretrained checkpoint, HuggingFace chaitjo/gRNAde @ 91491fc7
+  grnade_ckpt: tools/geometric-rna-design/checkpoints/gRNAde_drop3d@0.75_maxlen@500.h5
+  grnade_ckpt_config: tools/geometric-rna-design/checkpoints/config.yaml
+
+  # lociPARSE runs in its own conda env (torch 1.12), called by subprocess.
+  # Change this to wherever your Miniforge/Anaconda is installed.
+  lociparse_python: C:/Users/AnsaMubasher/miniforge3/envs/lociparse/python.exe
+
+  # US-align binary (evaluation only). On Windows the built binary is USalign.exe.
+  usalign_bin: tools/USalign/USalign.exe
+  usalign_args: ["-mol", "RNA"]
+
+# ---------------------------------------------------------------------
+# Data locations (data/ is gitignored)
+# ---------------------------------------------------------------------
+data:
+  raw_dir: data/raw                       # untouched downloads
+  casp15_targets_dir: data/raw/casp15/targets      # experimental (native) structures
+  casp15_models_dir: data/raw/casp15/predictions   # submitted models from all groups
+  processed_dir: data/processed           # parsed / split candidates
+  manifest_csv: data/processed/manifest.csv
+
+  # RNA-protein complexes are excluded from the main analysis and logged here.
+  # Filled in Step 2 once we've seen the real CASP15 target list. Left empty
+  # until then so we don't guess at which targets they are.
+  excluded_rna_protein_targets: []
+
+  # Targets whose candidates duplicate another target's, so they would be counted twice.
+  # RT1189 / RT1190: the RNA models are the same as R1189 / R1190 (US-align TM-scores
+  # identical model-for-model, checked 2026-11-09). Scored, but left out of evaluate.py.
+  excluded_duplicate_targets: [RT1189, RT1190]
+
+  # Targets whose native structure may be in gRNAde's training set
+  # (RNASolo, <=4 A, downloaded 2023-10-31). Filled by the Step 2 overlap check.
+  # evaluate.py reports metrics both with and without these targets.
+  # Checked 2026-11-09: the checkpoint's config.yaml says split 'das'. Native PDB IDs found in
+  # tools/geometric-rna-design/data/split_ids/*_das.txt (exact chain IDs):
+  #   train_ids_das.txt: 8S95_1_C (R1116), 8FZA_1_A/B (R1117, R1117v2), 7YR7_1_A (R1189), 7YR6_1_A (R1190)
+  #   val_ids_das.txt:   7QR4_1_B (R1107), 7QR3_1_C/D (R1108)   (used for model selection)
+  #   not in any split:  8TVZ, 8BTZ, 7ZJ4, 7PTK/7PTL, 8UYS, 8UYE  (R1126, R1128, R1136, R1138, R1149, R1156)
+  # This is an ID-level check; other PDB entries of a similar RNA could still be in training.
+  possible_training_overlap_targets: [R1107, R1108, R1116, R1117, R1117v2, R1189, R1190]
+
+# ---------------------------------------------------------------------
+# Step 3 — Preprocessing (prepare.py)
+# ---------------------------------------------------------------------
+prepare:
+  accepted_extensions: [".pdb", ".cif", ".mmcif", ".ent"]
+  split_multi_model: true     # a file with several MODEL blocks -> one candidate per model
+  # Skip a candidate if it covers less than this fraction of the target sequence
+  min_coverage: 0.90
+  # After sequence alignment, the max fraction of aligned positions allowed to
+  # mismatch (small differences such as modified bases). Above this -> skipped.
+  max_mismatch_fraction: 0.05
+  # The gRNAde checkpoint was trained on RNAs up to 500 nt. Longer candidates
+  # are still scored but flagged in the manifest.
+  grnade_max_len: 500
+
+# ---------------------------------------------------------------------
+# Step 4 — gRNAde scoring (score_grnade.py)
+# ---------------------------------------------------------------------
+grnade:
+  device: auto                # "auto" = CUDA if available, otherwise CPU
+  cache_dir: data/processed/grnade_scores   # one cached result per candidate
+  # Sanity checks: the native sequence on its own backbone should have
+  # perplexity well below 4 (4 = random guessing over A/C/G/U), and shuffled
+  # sequences on the same backbone should score higher.
+  sanity_random_ppl: 4.0
+  sanity_n_shuffles: 10
+  # Time limit for base-pair (secondary structure) detection per candidate. A normal
+  # 720-nt model takes ~11 s; physically broken models can take many minutes. Over the
+  # limit -> no 2D edges, flagged "no_sec_struct;sec_struct_timeout".
+  sec_struct_timeout_sec: 60
+
+# ---------------------------------------------------------------------
+# Step 5 — Normalisation & ranking (rank.py)
+# ---------------------------------------------------------------------
+rank:
+  top_k: 5
+  # Within-target z-score:  z_i = (ppl_i - mean) / std ;  final_score_i = -z_i
+  # Fallback to final_score = -ppl (with a warning) if fewer valid candidates
+  # than this, or if std == 0.
+  min_candidates_for_zscore: 3
+  std_ddof: 0                 # population std (ddof=0); stated explicitly for the report
+
+# ---------------------------------------------------------------------
+# Confidence labels (low / medium / high)
+# ---------------------------------------------------------------------
+# Thresholds are NOT set by hand. Step 8 derives them with leave-one-target-out
+# calibration and writes them here; until then they stay null, and
+# validate.py reports confidence as "uncalibrated".
+confidence:
+  metric: best_candidate_ppl  # raw perplexity of the top-ranked candidate
+  # Lower perplexity means more confident:
+  #   ppl <= high_max_ppl                -> high
+  #   high_max_ppl < ppl <= medium_max_ppl -> medium
+  #   ppl > medium_max_ppl               -> low
+  high_max_ppl: 2.2324
+  medium_max_ppl: 2.2324
+  # TM-score cut-offs used only during calibration to define "good" / "ok" picks
+  calib_tm_good: 0.45
+  calib_tm_ok: 0.30
+
+# ---------------------------------------------------------------------
+# Step 7 — Ground truth (label_usalign.py, evaluation only)
+# ---------------------------------------------------------------------
+usalign:
+  cache_csv: data/processed/usalign_labels.csv
+  # The TM-score we report is normalised by the reference (native) length.
+  # In `USalign model native` the native is Structure_2.
+  tm_normalised_by: native
+  timeout_sec: 300
+
+# ---------------------------------------------------------------------
+# Step 6 & 8 — Outputs and evaluation
+# ---------------------------------------------------------------------
+output:
+  results_dir: results
+  metrics_csv: results/metrics.csv
+  per_target_csv: results/per_target.csv
+  summary_md: results/summary.md
+  plots_dir: results/plots
+  log_dir: results/logs       # includes the skipped-candidate log
+
+evaluate:
+  # Rows of the results table
+  methods:
+    - oracle
+    - random
+    - grnade_raw              # ablation: raw perplexity, no normalisation
+    - grnade_norm             # ours
+    - lociparse_pmol
+    - grnade_lociparse_avg    # mean of z-scored gRNAde and z-scored lociPARSE
+  paired_tests:               # Wilcoxon signed-rank on per-target top-1 TM-score
+    - [grnade_norm, random]   # does gRNAde pick better than chance? (random = expected TM of a random pick)
+    - [grnade_norm, lociparse_pmol]
+    - [grnade_norm, grnade_raw]
+
+# ---------------------------------------------------------------------
+# Reproducibility
+# ---------------------------------------------------------------------
+seed: 42                      # used for shuffles, random baseline, tie-breaking
+log_level: INFO
