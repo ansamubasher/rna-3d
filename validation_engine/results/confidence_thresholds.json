@@ -1,0 +1,102 @@
+{
+  "tm_good": 0.45,
+  "tm_ok": 0.3,
+  "n_targets": 13,
+  "high_max_ppl": 2.2324460730207587,
+  "medium_max_ppl": 2.2324460730207587,
+  "train_accuracy": 0.7692307692307693,
+  "loto_accuracy": 0.5384615384615384,
+  "per_target": [
+    {
+      "target_id": "R1107",
+      "top1_ppl": 2.077627706059619,
+      "top1_tm": 0.5644,
+      "truth": "high",
+      "loto_pred": "high"
+    },
+    {
+      "target_id": "R1108",
+      "top1_ppl": 2.0288864208198807,
+      "top1_tm": 0.5368,
+      "truth": "high",
+      "loto_pred": "high"
+    },
+    {
+      "target_id": "R1116",
+      "top1_ppl": 2.159114121670528,
+      "top1_tm": 0.6676,
+      "truth": "high",
+      "loto_pred": "medium"
+    },
+    {
+      "target_id": "R1117",
+      "top1_ppl": 2.260632962442397,
+      "top1_tm": 0.2554,
+      "truth": "low",
+      "loto_pred": "high"
+    },
+    {
+      "target_id": "R1117v2",
+      "top1_ppl": 2.372247327244708,
+      "top1_tm": 0.415,
+      "truth": "medium",
+      "loto_pred": "low"
+    },
+    {
+      "target_id": "R1126",
+      "top1_ppl": 2.2042591835991208,
+      "top1_tm": 0.4939,
+      "truth": "high",
+      "loto_pred": "low"
+    },
+    {
+      "target_id": "R1128",
+      "top1_ppl": 2.0430583326767198,
+      "top1_tm": 0.7225,
+      "truth": "high",
+      "loto_pred": "high"
+    },
+    {
+      "target_id": "R1136",
+      "top1_ppl": 2.114425091382791,
+      "top1_tm": 0.4653,
+      "truth": "high",
+      "loto_pred": "high"
+    },
+    {
+      "target_id": "R1138",
+      "top1_ppl": 1.993150296756512,
+      "top1_tm": 0.5926,
+      "truth": "high",
+      "loto_pred": "high"
+    },
+    {
+      "target_id": "R1149",
+      "top1_ppl": 2.129431339941421,
+      "top1_tm": 0.3047,
+      "truth": "medium",
+      "loto_pred": "high"
+    },
+    {
+      "target_id": "R1156",
+      "top1_ppl": 2.375688253346805,
+      "top1_tm": 0.4764,
+      "truth": "high",
+      "loto_pred": "low"
+    },
+    {
+      "target_id": "R1189",
+      "top1_ppl": 2.572108310008034,
+      "top1_tm": 0.2512,
+      "truth": "low",
+      "loto_pred": "low"
+    },
+    {
+      "target_id": "R1190",
+      "top1_ppl": 2.54444386713018,
+      "top1_tm": 0.2857,
+      "truth": "low",
+      "loto_pred": "low"
+    }
+  ]
+}

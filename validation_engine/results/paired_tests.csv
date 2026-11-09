@@ -1,0 +1,5 @@
+subset,method_a,method_b,n_targets,mean_diff,n_a_better,n_b_better,n_ties,statistic,p_value,note
+all,grnade_norm,random,13,0.18537961234583525,12,1,0,1.0,0.00048828125,
+all,grnade_norm,grnade_raw,13,0.0,0,0,13,,,identical on every target (no test possible)
+no_overlap,grnade_norm,random,6,0.22818570040893218,5,1,0,1.0,0.0625,
+no_overlap,grnade_norm,grnade_raw,6,0.0,0,0,6,,,identical on every target (no test possible)
